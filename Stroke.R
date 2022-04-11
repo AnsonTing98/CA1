@@ -3,6 +3,9 @@ stroke_data <- read.csv("stroke.csv", na = "")
 
 stroke_data
 
+# Check duplicate data
+sum(duplicated(stroke_data))
+
 # Examine the data type and 
 # show the structure of dataframe
 str(stroke_data)
@@ -49,8 +52,10 @@ plot(summary(factor(stroke_data$work_type)),
 pie(summary(factor(stroke_data$smoking_status)))
 
 patient_had_stroke <- stroke_data[stroke_data$stroke == 1, ]
+patient_not_stroke <- stroke_data[!stroke_data$stroke == 1, ]
 
-pie(summary(factor(patient_had_stroke$work_type)))
-pie(summary(factor(patient_had_stroke$smoking_status)))
-summary(factor(patient_had_stroke$smoking_status))
-stroke_data
+pie(summary(factor(patient_not_stroke$ever_married)))
+plot(summary(factor(patient_had_stroke$age)))
+
+
+hist(stroke_data$age)
