@@ -59,3 +59,27 @@ plot(summary(factor(patient_had_stroke$age)))
 
 
 hist(stroke_data$age)
+hist(stroke_data$bmi)
+
+stroke_sum <- sum(stroke_data$stroke[stroke_data$stroke == 1])
+not_stroke_sum <- nrow(stroke_data[stroke_data$stroke == 0, ]) 
+
+percentage_of_stroke <- c(round(stroke_sum / not_stroke_sum * 100), 
+                          round(100 - (stroke_sum / not_stroke_sum * 100)))
+
+barplot(percentage_of_stroke, 
+        col = c("red", "blue"), 
+        main = "Percentage of Patient had Stroke",
+        ylab = "Percentage", 
+        ylim = c(0,105), 
+        names.arg = c("Stroke", "Healthy"))
+axis(2, at = 0:100 * 10)
+text(0.7, 5, labels = percentage_of_stroke[1],
+     pos = 3)
+text(0.75, 5, labels = "%",
+     pos = 3)
+text(1.9, 95, labels = percentage_of_stroke[2],
+     pos = 3)
+text(1.96, 95, labels = "%",
+     pos = 3)
+
