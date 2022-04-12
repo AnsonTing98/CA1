@@ -44,12 +44,17 @@ missing_values <- aggr(stroke_data,
 # summary of missing_values
 summary(missing_values)
 
-summary(stroke_data$age)
+# 4% BMI data missing
 
-plot(summary(factor(stroke_data$work_type)), 
-     type = "b")
+# Use !complete.case to get the missing data
+# and store in incomplete_data
+incomplete_data <- stroke_data[!complete.cases(stroke_data),]
+nrow(incomplete_data)
 
-pie(summary(factor(stroke_data$smoking_status)))
+# use na.omit() to drop the missing data
+# and check the NA
+stroke_data <- na.omit(stroke_data)
+sum(is.na(stroke_data))
 
 patient_had_stroke <- stroke_data[stroke_data$stroke == 1, ]
 patient_not_stroke <- stroke_data[!stroke_data$stroke == 1, ]
@@ -83,3 +88,18 @@ text(1.9, 95, labels = percentage_of_stroke[2],
 text(1.96, 95, labels = "%",
      pos = 3)
 
+age_kde <- density(stroke_data$age)
+plot(age_kde)
+
+age_kde_stroke <- density(patient_had_stroke$age)
+plot(age_kde_stroke)
+
+glucose_kde <- density(stroke_data$avg_glucose_level)
+plot(glucose_kde)
+
+bmi_kde <- density(stroke_data$bmi)
+plot(bmi_kde)
+
+boxplot(stroke_data$bmi)
+
+t.test(stroke_data$bmi, mu = 25, conf.level = 0.95)
