@@ -56,34 +56,27 @@ nrow(incomplete_data)
 stroke_data <- na.omit(stroke_data)
 sum(is.na(stroke_data))
 
-patient_had_stroke <- stroke_data[stroke_data$stroke == 1, ]
-patient_not_stroke <- stroke_data[!stroke_data$stroke == 1, ]
-
-pie(summary(factor(patient_not_stroke$ever_married)))
-plot(summary(factor(patient_had_stroke$age)))
-
-
-hist(stroke_data$age)
-hist(stroke_data$bmi)
+patient_stroke <- stroke_data[stroke_data$stroke == 1, ]
+patient_healthy <- stroke_data[!stroke_data$stroke == 1, ]
 
 stroke_sum <- sum(stroke_data$stroke[stroke_data$stroke == 1])
-not_stroke_sum <- nrow(stroke_data[stroke_data$stroke == 0, ]) 
+healthy_sum <- nrow(stroke_data[stroke_data$stroke == 0, ]) 
 
-percentage_of_stroke <- c(round(stroke_sum / not_stroke_sum * 100), 
-                          round(100 - (stroke_sum / not_stroke_sum * 100)))
+stroke_per <- c(round(stroke_sum / healthy_sum * 100), 
+                          round(100 - (stroke_sum / healthy_sum * 100)))
 
-barplot(percentage_of_stroke, 
+barplot(stroke_per, 
         col = c("red", "blue"), 
         main = "Percentage of Patient had Stroke",
         ylab = "Percentage", 
         ylim = c(0,105), 
         names.arg = c("Stroke", "Healthy"))
 axis(2, at = 0:100 * 10)
-text(0.7, 5, labels = percentage_of_stroke[1],
+text(0.7, 5, labels = stroke_per[1],
      pos = 3)
 text(0.75, 5, labels = "%",
      pos = 3)
-text(1.9, 95, labels = percentage_of_stroke[2],
+text(1.9, 95, labels = stroke_per[2],
      pos = 3)
 text(1.96, 95, labels = "%",
      pos = 3)
@@ -103,3 +96,22 @@ plot(bmi_kde)
 boxplot(stroke_data$bmi)
 
 t.test(stroke_data$bmi, mu = 25, conf.level = 0.95)
+
+boxplot(summary(factor(stroke_data$gender)))
+
+nrow(patient_had_stroke[patient_had_stroke$gender == "Male",])
+nrow(patient_not_stroke)
+
+male_stroke_percentage <- 
+  nrow(patient_had_stroke[patient_had_stroke$gender == "Male", ]) / 
+  nrow(stroke_data[stroke_data$gender == "Male", ]) * 100
+
+female_stroke_percentage <- 
+  nrow(patient_had_stroke[patient_had_stroke$gender == "Female", ]) /
+  nrow(stroke_data[stroke_data$gender == "Female", ]) * 100
+
+male_percentage <- nrow(stroke_data[stroke_data$gender == "Male", ]) / 
+  nrow(stroke_data) * 100
+
+
+
