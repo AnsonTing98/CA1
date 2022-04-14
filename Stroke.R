@@ -56,15 +56,31 @@ nrow(incomplete_data)
 stroke_data <- na.omit(stroke_data)
 sum(is.na(stroke_data))
 
+# store the content of par() to add variable
+opar <- par(no.readonly = TRUE)
+
+# Store the patient had stroke to new dataframe 
+# named patient_stroke
 patient_stroke <- stroke_data[stroke_data$stroke == 1, ]
+
+# And patient NOT had stroke to another dataframe 
+# named patient_healthy
 patient_healthy <- stroke_data[!stroke_data$stroke == 1, ]
 
+# Use sum to count the patient who had stroke
+# and use nrow to count the patient NOT had stroke
 stroke_sum <- sum(stroke_data$stroke[stroke_data$stroke == 1])
 healthy_sum <- nrow(stroke_data[stroke_data$stroke == 0, ]) 
 
-stroke_per <- c(round(stroke_sum / healthy_sum * 100), 
-                          round(100 - (stroke_sum / healthy_sum * 100)))
+# Calculate the percentage of patient had stroke
+# stroke percentage = stroke /  * 100
+# healthy percentage = 100 - stroke percentage
+# round the values to 0 decimal places
+stroke_per <- c(round(stroke_sum / nrow(stroke_data) * 100), 
+                          round(100 - (stroke_sum / nrow(stroke_data) * 100)))
 
+# Using barplot to plot the percentage of patient had stroke
+# red = stroke,  blue = healthy
 barplot(stroke_per, 
         col = c("red", "blue"), 
         main = "Percentage of Patient had Stroke",
@@ -81,14 +97,28 @@ text(1.9, 95, labels = stroke_per[2],
 text(1.96, 95, labels = "%",
      pos = 3)
 
+
+
 age_kde <- density(stroke_data$age)
-plot(age_kde)
 
-age_kde_stroke <- density(patient_had_stroke$age)
-plot(age_kde_stroke)
+stroke_age_kde <- density(patient_stroke$age)
+healthy_age_kde <- density(patient_healthy$age)
 
-glucose_kde <- density(stroke_data$avg_glucose_level)
-plot(glucose_kde)
+par(mfrow = c(2, 2))
+
+plot(age_kde, main = "Overall Age Density", ylab = "", yaxt="n", xlab = "Age")
+hist(stroke_data$age, prob = TRUE)
+lines(age_kde, col = "red")
+
+plot(stroke_age_kde, 
+     col = "red", 
+     main = "Age vs Stroke", 
+     ylab = "", yaxt="n", xlab = "Age")
+lines(healthy_age_kde, col = "blue")
+legend("topleft", legend = c("Stroke", "Healthy"), 
+       col = c("red", "blue"), lty=1, cex=0.8)
+
+par(opar)
 
 bmi_kde <- density(stroke_data$bmi)
 plot(bmi_kde)
@@ -99,15 +129,12 @@ t.test(stroke_data$bmi, mu = 25, conf.level = 0.95)
 
 boxplot(summary(factor(stroke_data$gender)))
 
-nrow(patient_had_stroke[patient_had_stroke$gender == "Male",])
-nrow(patient_not_stroke)
-
-male_stroke_percentage <- 
-  nrow(patient_had_stroke[patient_had_stroke$gender == "Male", ]) / 
+male_stroke_per <- 
+  nrow(patient_stroke[patient_stroke$gender == "Male", ]) / 
   nrow(stroke_data[stroke_data$gender == "Male", ]) * 100
 
-female_stroke_percentage <- 
-  nrow(patient_had_stroke[patient_had_stroke$gender == "Female", ]) /
+female_stroke_per <- 
+  nrow(patient_stroke[patient_stroke$gender == "Female", ]) /
   nrow(stroke_data[stroke_data$gender == "Female", ]) * 100
 
 male_percentage <- nrow(stroke_data[stroke_data$gender == "Male", ]) / 
