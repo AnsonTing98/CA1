@@ -56,7 +56,7 @@ nrow(incomplete_data)
 stroke_data <- na.omit(stroke_data)
 sum(is.na(stroke_data))
 
-# store the content of par() to add variable
+# capture the parameters to opar
 opar <- par(no.readonly = TRUE)
 
 # Store the patient had stroke to new dataframe 
@@ -97,27 +97,63 @@ text(1.9, 95, labels = stroke_per[2],
 text(1.96, 95, labels = "%",
      pos = 3)
 
+# Distribution of Age - Sroke vs Healthy
+# function density - kernel density estimates
 
-
+# use density on stroke_date$age to get the overall density of age
+# called age_kde
 age_kde <- density(stroke_data$age)
 
+# density on patient_stroke$age called stroke_age_kde
 stroke_age_kde <- density(patient_stroke$age)
+# density on patient_healthy$age called healthy_age_kde
 healthy_age_kde <- density(patient_healthy$age)
 
+# create a 2 x 2 plot
+# show 4 plot in 2 rows and 2 cols
 par(mfrow = c(2, 2))
 
-plot(age_kde, main = "Overall Age Density", ylab = "", yaxt="n", xlab = "Age")
-hist(stroke_data$age, prob = TRUE)
+# First plot is Density of Overall Age
+# which show the density of age
+plot(age_kde, 
+     main = "Density of Overall Age", 
+     ylab = "", 
+     yaxt = "n", 
+     xlab = "Age")
+
+# Second plot is Histogram of Overall Age
+# which show the histogram of age
+# and density of age using lines()
+hist(stroke_data$age, 
+     main = "Histogram of Overall Age", 
+     prob = TRUE, 
+     ylab = "", 
+     yaxt = "n", 
+     xlab = "Age")
 lines(age_kde, col = "red")
 
+#Third plot is showing the density of Stroke vs Healthy
+# red line is Stroke patient
+# blue line is Healthy patient
 plot(stroke_age_kde, 
      col = "red", 
-     main = "Age vs Stroke", 
+     main = "Density of Age - Stroke vs Healthy", 
      ylab = "", yaxt="n", xlab = "Age")
 lines(healthy_age_kde, col = "blue")
 legend("topleft", legend = c("Stroke", "Healthy"), 
        col = c("red", "blue"), lty=1, cex=0.8)
 
+# Last plot is the histogram of the patient had Stroke
+# and show the lines of density of Stroke
+hist(patient_stroke$age, 
+     main = "Histogram of Age - Stroke", 
+     prob = TRUE, 
+     ylab = "", 
+     yaxt = "n", 
+     xlab = "Age")
+lines(stroke_age_kde, col = "red")
+
+# return parameters to default
 par(opar)
 
 bmi_kde <- density(stroke_data$bmi)
@@ -139,6 +175,4 @@ female_stroke_per <-
 
 male_percentage <- nrow(stroke_data[stroke_data$gender == "Male", ]) / 
   nrow(stroke_data) * 100
-
-
 
