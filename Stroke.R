@@ -1,3 +1,17 @@
+# library used (install.package if don't have)
+library(mice)
+library(VIM)
+library(corrplot)
+library(psych)
+library(lattice)
+
+# capture the parameters to opar
+opar <- par(no.readonly = TRUE)
+
+#-------------------------------------------------------------------------------
+# Data Preparation
+#-------------------------------------------------------------------------------
+
 # read csv file into a dataframe
 stroke_data <- read.csv("stroke.csv", na = "")
 
@@ -10,13 +24,16 @@ sum(duplicated(stroke_data))
 # show the structure of dataframe
 str(stroke_data)
 
+# Noted bmi is chr because of "N/A"
+
 # Change N/A of bmi to NA
 # and convert bmi from chr to numerical
 stroke_data$bmi[stroke_data$bmi == "N/A"] <- NA
 
 stroke_data$bmi <- as.numeric(stroke_data$bmi)
 
-str(stroke_data)
+# Check class of bmi
+class(stroke_data$bmi)
 
 # Convert the Date to date str
 # by using as.Date()
@@ -30,16 +47,53 @@ stroke_data$Date <- as.Date(stroke_data$Date, "%A %d %B %Y")
 # using weekdays() to extract the weekday of the date
 stroke_data$weekday <- weekdays(stroke_data$Date)
 
+# Convert all the chr class variables to factor for plot
+stroke_data$gender <- factor(stroke_data$gender)
+stroke_data$ever_married <- factor(stroke_data$ever_married)
+stroke_data$work_type <- factor(stroke_data$work_type, 
+                                levels = c("Never_worked", 
+                                           "children", 
+                                           "Govt_job", 
+                                           "Private", 
+                                           "Self-employed"), 
+                                labels = c("never worked", 
+                                           "children", 
+                                           "govt job", 
+                                           "private", 
+                                           "self-employed"))
+stroke_data$Residence_type <- factor(stroke_data$Residence_type)
+stroke_data$smoking_status <- factor(stroke_data$smoking_status, 
+                                     levels = c("never smoked", 
+                                                "formerly smoked", 
+                                                "smokes", 
+                                                "Unknown"), 
+                                        labels = c("never smoked", 
+                                                   "formerly smoked", 
+                                                   "smokes", 
+                                                   "unknown"))
+
+# hypertension, heart_disease and stroke
+# need to converted to factor as categorical data
+stroke_data$hypertension_factor <- factor(stroke_data$hypertension, 
+                                   labels = c("no", "yes"))
+stroke_data$heart_disease_factor <- factor(stroke_data$heart_disease, 
+                                    labels = c("no", "yes"))
+stroke_data$stroke_factor <- factor(stroke_data$stroke, 
+                             labels = c("healthy", "stroke"))
+
+# use summary() to check the transformation
+# weekday just show the recorded days
+# so no need to convert it
+summary(stroke_data)
+
 # Use mice and VIM package
 # to show the missing values
-library(mice)
-library(VIM)
 md.pattern(stroke_data, rotate.names = TRUE)
 
 missing_values <- aggr(stroke_data, 
                        prop = FALSE, 
                        numbers = TRUE, 
-                       cex.axis = 0.59)
+                       cex.axis = 0.5)
 
 # summary of missing_values
 summary(missing_values)
@@ -56,123 +110,376 @@ nrow(incomplete_data)
 stroke_data <- na.omit(stroke_data)
 sum(is.na(stroke_data))
 
-# capture the parameters to opar
-opar <- par(no.readonly = TRUE)
+# Use sapply() and is.numeric
+# to get the list of numerical data
+numeric_variable_list <- sapply(stroke_data, is.numeric)
 
-# Store the patient had stroke to new dataframe 
-# named patient_stroke
-patient_stroke <- stroke_data[stroke_data$stroke == 1, ]
+# drop id column due meaningless 
+# change it to FALSE
+numeric_variable_list["id"] <- FALSE
 
-# And patient NOT had stroke to another dataframe 
-# named patient_healthy
-patient_healthy <- stroke_data[!stroke_data$stroke == 1, ]
+# Create a subset of a dataframe
+# containing only numerical data
+stroke_numerical_data <- stroke_data[numeric_variable_list]
 
-# Use sum to count the patient who had stroke
-# and use nrow to count the patient NOT had stroke
-stroke_sum <- sum(stroke_data$stroke[stroke_data$stroke == 1])
-healthy_sum <- nrow(stroke_data[stroke_data$stroke == 0, ]) 
+# change the column names for numerical data
+# to improve display of corrplot
+colnames(stroke_numerical_data)[
+  colnames(stroke_numerical_data) == "avg_glucose_level"
+  ] <- "glucose"
 
-# Calculate the percentage of patient had stroke
-# stroke percentage = stroke /  * 100
-# healthy percentage = 100 - stroke percentage
-# round the values to 0 decimal places
-stroke_per <- c(round(stroke_sum / nrow(stroke_data) * 100), 
-                          round(100 - (stroke_sum / nrow(stroke_data) * 100)))
+colnames(stroke_numerical_data)[
+  colnames(stroke_numerical_data) == "heart_disease"
+  ] <- "HD"
 
-# Using barplot to plot the percentage of patient had stroke
+colnames(stroke_numerical_data)[
+  colnames(stroke_numerical_data) == "hypertension"
+  ] <- "HTN"
+
+corrplot(cor(stroke_numerical_data), 
+         order = 'AOE', 
+         addCoef.col = 'black', 
+         tl.pos = 'd',
+         number.cex = 0.8)
+
+# do.call() function allows us to 
+# apply the cbind() to each element generated by
+# lapply()
+numerical_summary <- do.call(cbind, 
+                             lapply(stroke_numerical_data[c(1, 4, 5)], 
+                                    summary))
+numerical_summary
+
+# examine the data in more detail
+# showing age, glucose and bmi with pairs
+pairs(stroke_numerical_data[c(1, 4, 5)])
+
+pairs.panels(stroke_data[c(2, 3, 6, 7, 8, 9, 10, 11,15, 16, 17)],
+             smooth = TRUE,
+             scale = FALSE,
+             density = TRUE,
+             ellipses = TRUE,
+             method = "spearman",
+             pch = 21,
+             lm = FALSE, 
+             cor = TRUE,
+             jiggle = FALSE,
+             factor = 2,
+             hist.col = 4,
+             stars = TRUE,
+             ci = TRUE) 
+
+#-------------------------------------------------------------------------------
+# Data Visualisation
+# Percentage of Stroke vs Healthy
+#-------------------------------------------------------------------------------
+
+# check the healthy patient records
+# and stroke patient records
+nrow(stroke_data[stroke_data$stroke_factor == "healthy", ])
+nrow(stroke_data[stroke_data$stroke_factor == "stroke", ])
+
+# table of percentage of stroke vs healthy
+# called percentage_table
+percentage_stroke_healthy <- round(
+  prop.table(table(stroke_data$stroke_factor)) * 100
+  )
+
+# barplot the percentage of patient had stroke vs healthy
 # red = stroke,  blue = healthy
-barplot(stroke_per, 
-        col = c("red", "blue"), 
-        main = "Percentage of Patient had Stroke",
+barplot(percentage_stroke_healthy, 
+        col = c("blue", "red"), 
+        main = "Percentage of patient - healthy vs stroke", 
         ylab = "Percentage", 
-        ylim = c(0,105), 
-        names.arg = c("Stroke", "Healthy"))
+        ylim = c(0,105))
 axis(2, at = 0:100 * 10)
-text(0.7, 5, labels = stroke_per[1],
+text(0.65, 95, labels = percentage_stroke_healthy["healthy"],
      pos = 3)
-text(0.75, 5, labels = "%",
+text(0.73, 95, labels = "%",
      pos = 3)
-text(1.9, 95, labels = stroke_per[2],
+text(1.85, 5, labels = percentage_stroke_healthy["stroke"],
      pos = 3)
-text(1.96, 95, labels = "%",
+text(1.91, 5, labels = "%",
      pos = 3)
 
-# Distribution of Age - Sroke vs Healthy
-# function density - kernel density estimates
+#-------------------------------------------------------------------------------
+# Research Question 1: 
+# Does age has impact on stroke?
+#-------------------------------------------------------------------------------
 
-# use density on stroke_date$age to get the overall density of age
-# called age_kde
-age_kde <- density(stroke_data$age)
+# Histogram to show the 
+# distribution of age with stroke variable
+# - Stroke vs Healthy
+histogram(~ age | stroke_factor, 
+          data = stroke_data, 
+          main = "Distribution of age - healthy vs stroke", 
+          xlab = "Age of patient", 
+          ylab = "Frequency %")
 
-# density on patient_stroke$age called stroke_age_kde
-stroke_age_kde <- density(patient_stroke$age)
-# density on patient_healthy$age called healthy_age_kde
-healthy_age_kde <- density(patient_healthy$age)
+# Using tapply & median 
+# to get the median of both variables
+tapply(stroke_data$age, stroke_data$stroke_factor, median)
 
-# create a 2 x 2 plot
-# show 4 plot in 2 rows and 2 cols
-par(mfrow = c(2, 2))
+# Q-Q plot of the age
+# to check the normality
+qqnorm(stroke_data$age, 
+       main = "Normal Q-Q plot for age data")
+qqline(stroke_data$age, col = "red")
 
-# First plot is Density of Overall Age
-# which show the density of age
-plot(age_kde, 
-     main = "Density of Overall Age", 
-     ylab = "", 
-     yaxt = "n", 
-     xlab = "Age")
+# qqplot to comparing age variable
+# and stroke variable
+with(stroke_data, qqplot(age[stroke_factor == "stroke"], 
+                         age[stroke_factor == "healthy"], 
+                         main = "Comparing age variable and stroke variable", 
+                         xlab = "Age of stroke patient",
+                         ylab =  "Age of healthy patient"))
 
-# Second plot is Histogram of Overall Age
-# which show the histogram of age
-# and density of age using lines()
-hist(stroke_data$age, 
-     main = "Histogram of Overall Age", 
-     prob = TRUE, 
-     ylab = "", 
-     yaxt = "n", 
-     xlab = "Age")
-lines(age_kde, col = "red")
+# plot in 1 row with 2 col
+par(mfrow = c(1,2))
 
-#Third plot is showing the density of Stroke vs Healthy
-# red line is Stroke patient
-# blue line is Healthy patient
-plot(stroke_age_kde, 
-     col = "red", 
-     main = "Density of Age - Stroke vs Healthy", 
-     ylab = "", yaxt="n", xlab = "Age")
-lines(healthy_age_kde, col = "blue")
-legend("topleft", legend = c("Stroke", "Healthy"), 
-       col = c("red", "blue"), lty=1, cex=0.8)
+# Q-Q plot for distribution of age - the healthy patient
+with(stroke_data, {qqnorm(age[stroke_factor == "healthy"], 
+                          main = "Q-Q plot - Age of healthy patient") 
+  qqline(age[stroke_factor == "healthy"], col = "red")})
 
-# Last plot is the histogram of the patient had Stroke
-# and show the lines of density of Stroke
-hist(patient_stroke$age, 
-     main = "Histogram of Age - Stroke", 
-     prob = TRUE, 
-     ylab = "", 
-     yaxt = "n", 
-     xlab = "Age")
-lines(stroke_age_kde, col = "red")
+# Q-Q plot for distribution of age - the stroke patient
+with(stroke_data, {qqnorm(age[stroke_factor == "stroke"], 
+                          main = "Q-Q plot - Age of stroke patient") 
+  qqline(age[stroke_factor == "stroke"], col = "red")})
 
-# return parameters to default
+# reset parameter
 par(opar)
 
-bmi_kde <- density(stroke_data$bmi)
-plot(bmi_kde)
+# applying shapiro.test on age variable
+# to check the normality
+normality_test_Q1 <- shapiro.test(stroke_data$age)
+normality_test_Q1$p.value
 
-boxplot(stroke_data$bmi)
+# p-values = 1.27e-31 < 0.05
+# concluded dependent age variable is not normally distributed
+# so choose non-parametric test
 
-t.test(stroke_data$bmi, mu = 25, conf.level = 0.95)
+# dependent = continuous 
+# independent = categorical
+# non-parametric test
+# Hence applying Mann-Whitney test
+statistical_test_Q1 <- wilcox.test(stroke_data$age ~ stroke_data$stroke_factor)
+statistical_test_Q1$p.value
 
-boxplot(summary(factor(stroke_data$gender)))
+# p-value = 6.20026e-61 (p-value < 0.05)
+# null hypothesis is rejected
 
-male_stroke_per <- 
-  nrow(patient_stroke[patient_stroke$gender == "Male", ]) / 
-  nrow(stroke_data[stroke_data$gender == "Male", ]) * 100
+#-------------------------------------------------------------------------------
+# Research Question 2: 
+# Does smoking cause stroke?
+#-------------------------------------------------------------------------------
 
-female_stroke_per <- 
-  nrow(patient_stroke[patient_stroke$gender == "Female", ]) /
-  nrow(stroke_data[stroke_data$gender == "Female", ]) * 100
+# due to "unknown" is undefined data in smoking_status
+# it will impact the testing
+# so remove it
+# and store in new data frame called research_Q2_test
+research_Q2_test <- stroke_data[!stroke_data$smoking_status == "unknown", ]
 
-male_percentage <- nrow(stroke_data[stroke_data$gender == "Male", ]) / 
-  nrow(stroke_data) * 100
+# reset the factor of smoking_status
+# to allow variable use in table() and chisq.test()
+research_Q2_test$smoking_status <- factor(research_Q2_test$smoking_status)
 
+# histogram of distribution between 
+# smoking_status variable and stroke variable
+# with Healthy vs Stroke
+histogram(~ smoking_status | stroke_factor, 
+          data = research_Q2_test, 
+          main = "Distribution of smoking status - healthy vs stroke", 
+          xlab = "Smoking status", 
+          ylab = "Frequency %")
+
+attach(research_Q2_test)
+# apply chisq.test 
+chisq.test(table(smoking_status, stroke_factor))
+detach(research_Q2_test)
+
+# p-value = 0.04996
+# really close to 0.05
+# decision can go either way
+
+#-------------------------------------------------------------------------------
+# Research Question 3: 
+# Is body mass index (BMI) greater than or equal to 25 
+# is highly chance to have stroke?
+#-------------------------------------------------------------------------------
+
+# histogram for distribution of bmi and stroke variable
+# with stroke vs heathly
+histogram(~stroke_data$bmi | stroke_data$stroke_factor, 
+          main = "Distribution of bmi - healthy vs stroke", 
+          xlab = "Body mass index (BMI)", 
+          ylab = "Fequency %")
+
+# check the median to check normality
+tapply(stroke_data$bmi, stroke_data$stroke_factor, median)
+
+# Q-Q plot for bmi data
+qqnorm(stroke_data$bmi, 
+       main = "Normal Q-Q plot of bmi data")
+qqline(stroke_data$bmi, col = "red")
+
+# Q-Q plot for comparing BMI variable and stroke variable
+# with stroke and healthy
+with(stroke_data,
+     qqplot(bmi[stroke_factor == "stroke"],
+            bmi[stroke_factor == "healthy"], 
+            main = "Comparing bmi variable and stroke variable", 
+            xlab = "BMI stroke patient",
+            ylab =  "BMI healthy patient"))
+
+# plot in 1 row with 2 col
+par(mfrow = c(1, 2))
+
+# Q-Q plot for the distribution of bmi
+# healthy patient
+with(stroke_data, {qqnorm(bmi[stroke_factor == "healthy"], 
+                          main = "Q-Q plot bmi of healthy patient") 
+  qqline(bmi[stroke_factor == "healthy"], col = "red")})
+
+# Q-Q plot for the distribution of bmi
+# stroke patient
+with(stroke_data, {qqnorm(bmi[stroke_factor == "stroke"], 
+                          main = "Q-Q plot age of stroke patient") 
+  qqline(bmi[stroke_factor == "stroke"], col = "red")})
+
+par(opar)
+
+# apply Shapiro test on bmi var
+# to check the normality
+normality_test_Q3 <- shapiro.test(stroke_data$bmi)
+normality_test_Q3$p.value
+
+# p-value = 6.615873e-37 < 0.05
+# bmi var is not normally distributed
+# choose non-parametric test
+
+# dependent = continuous 
+# independent = categorical
+# non-parametric test
+# Hence applying Mann-Whitney test
+# mu - specifying a parameter used to form null hypothesis
+# alt - specifying the alternative hypothesis 
+# one of "two.sided" (default), "greater" or "less"
+wilcox.test(stroke_data$bmi ~ stroke_data$stroke_factor, 
+            mu = 25, alternative = "greater")
+
+# p-value = 1 (p-value > 0.05)
+# null hypothesis is failed to reject
+
+#-------------------------------------------------------------------------------
+# Research Question 4: 
+# Does a risk in BMI come with risk in blood glucose levels?
+#-------------------------------------------------------------------------------
+
+# plot the comparison of average glucose level
+# with bmi
+plot(stroke_data$bmi, 
+     stroke_data$avg_glucose_level, 
+     col = "blue", 
+     main = "Comparison of average glucose level with bmi", 
+     xlab = "BMI", 
+     ylab = "Blood glucose level (Average)")
+
+# histogram of avg_glucose_level
+hist(stroke_data$avg_glucose_level, 
+     main = "Histogram of average glucose level", 
+     col = "blue", 
+     xlab = "Average glucose level (blood)")
+
+# plot in 1 row with 2 col
+par(mfrow = c(1,2))
+
+# Q-Q plot for distribution of bmi variable
+# show qqline with red color 
+with(stroke_data, {qqnorm(bmi, 
+                   main = "Normal Q-Q plot of bmi data", 
+                   xlab = "Body mass index (BMI)")
+  qqline(bmi, col = "red")})
+
+# Q-Q plot for distribution of average glucose level
+# show qqline with red color
+with(stroke_data, {qqnorm(avg_glucose_level, 
+                   main = "Normal Q-Q plot of average of blood glucose levels", 
+                   xlab = "Blood glucose levels (Average)")
+  qqline(avg_glucose_level, col = "red")})
+
+par(opar)
+
+# Shapiro normality test for bmi
+normality_test_Q4_bmi <- shapiro.test(stroke_data$bmi)
+normality_test_Q4_bmi$p.value
+
+# p-value = 6.615873e-37 < 0.05
+# bmi variable is not normally distributed
+
+# Shapiro normality test for avg_glucose_level
+normality_test_Q4_glucose <- shapiro.test(stroke_data$avg_glucose_level)
+normality_test_Q4_glucose$p.value
+
+# p-value = 1.173727e-60
+# avg_glucose_level is not normally distributed
+
+# dependent variable - bmi (not normally distributed)
+# non-parametric test will be applied
+# Spearman’s Correlation Co-efficient implemented on both var
+cor.test(stroke_data$bmi, stroke_data$avg_glucose_level, 
+         method = "spearman", exact = FALSE)
+
+# p-value = 9.16e-16
+# p-value < 0.05, rejected null hypothesis
+
+#-------------------------------------------------------------------------------
+# Research Question 5: 
+# Does high blood pressure (hypertension) lead to heart disease
+#-------------------------------------------------------------------------------
+
+attach(stroke_data)
+
+# histogram of distribution of hypertension
+# with heart disease
+histogram(~hypertension_factor | heart_disease_factor, 
+          main = "Distribution of hypertension vs heart disease", 
+          xlab = "Hypertension", 
+          ylab = "Fequency %")
+
+# check percentage of patients
+# have hypertension vs no hypertension
+# by heart disease = yes
+prop.table(table(
+  hypertension_factor[heart_disease_factor == "yes"], 
+  heart_disease_factor[heart_disease_factor == "yes"]
+))
+
+# patients have heart disease
+# percentage of no hypertension = 76%
+# percentage of hypertension = 24%
+
+# check percentage of patients
+# have hypertension vs no hypertension
+# by heart disease = no
+prop.table(table(
+  hypertension_factor[heart_disease_factor == "no"], 
+  heart_disease_factor[heart_disease_factor == "no"]
+))
+
+# patients no heart disease
+# percentage of no hypertension = 92%
+# percentage of hypertension = 8%
+
+# apply chisq.test 
+chisq.test(table(hypertension_factor, heart_disease_factor))
+           
+detach(stroke_data)
+
+# p-value = 1.12e-15 < 0.05
+# rejected null hypothesis
+
+
+
+# Write stroke file as csv file for future work
+write.csv(stroke_data, file = "Stroke-modified.csv")
